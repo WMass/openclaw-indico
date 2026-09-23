@@ -1,0 +1,76 @@
+{
+  "id": "indico",
+  "name": "Indico (CERN)",
+  "description": "Expose Indico categories and events as agent tools against indico.cern.ch.",
+  "categories": [
+    "scheduling"
+  ],
+  "contracts": {
+    "tools": [
+      "indico_assign_contribution",
+      "indico_book_room",
+      "indico_category_events",
+      "indico_create_contribution",
+      "indico_create_event",
+      "indico_create_session",
+      "indico_create_session_block",
+      "indico_delete_contribution",
+      "indico_delete_event",
+      "indico_delete_session",
+      "indico_download_file",
+      "indico_edit_contribution",
+      "indico_edit_session",
+      "indico_edit_timetable_entry",
+      "indico_event_details",
+      "indico_get_protection",
+      "indico_manage_contributions",
+      "indico_reservations",
+      "indico_room_by_name",
+      "indico_room_details",
+      "indico_schedule_contributions",
+      "indico_search_events",
+      "indico_search_users",
+      "indico_set_protection",
+      "indico_timetable",
+      "indico_unschedule_contribution",
+      "indico_user",
+      "indico_user_details"
+    ]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "token": {
+        "description": "Indico PAT \u2014 vault SecretRef (store id INDICO_TOKEN) or plain string",
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "id"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}
