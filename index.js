@@ -1050,5 +1050,146 @@ export default {
         return errResult("some schedules failed: " + JSON.stringify(results), { status: 207 });
       },
     });
+
+    // ---- attachments (management) ------------------------------------
+    // Verified against Indico v3.3 management endpoints. Scope: event ->
+    // /event/<ev>/manage/attachments/...; session -> /event/<ev>/manage/sessions/<sid>/attachments/...;
+    // contribution -> /event/<ev>/contributions/<cid>/attachments/...  (note: display prefix)
+    function attachScope(p) {
+      if (p.scope === 'contribution') return `/event/${p.event_id}/contributions/${p.contribution_id}/attachments`;
+      if (p.scope === 'session') return `/event/${p.event_id}/manage/sessions/${p.session_id}/attachments`;
+      return `/event/${p.event_id}/manage/attachments`;
+    }
+
+    api.registerTool({
+      name: "indico_upload_attachment",
+      description:
+        "Upload a local file as an attachment on an Indico object (WRITE; management endpoint). " +
+        "Params: event_id; scope (event|session|contribution; default event); session_id/contribution_id when scope needs it; " +
+        "file_path (absolute path on the gateway host). Optional title, description, folder, protection_mode (default inheriting).",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          event_id: { type: "integer", minimum: 0 },
+          scope: { type: "string", enum: ["event", "session", "contribution"] },
+          session_id: { type: "integer", minimum: 0 },
+          contribution_id: { type: "integer", minimum: 0 },
+          file_path: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          folder: { type: "string" },
+          protection_mode: { type: "string", enum: ["public", "inheriting", "protected"] },
+        },
+        required: ["event_id", "file_path"],
+      },
+      async execute(_id, p) {
+        const buf = readFileSync(p.file_path);
+        const fname = p.file_path.split("/").pop();
+        const fd = new FormData();
+        fd.append("files", new Blob([buf]), fname);
+        if (p.title) fd.append("title", p.title);
+        if (p.description) fd.append("description", p.description);
+        if (p.folder) fd.append("folder", p.folder);
+        if (p.protection_mode) fd.append("protection_mode", p.protection_mode);
+        const res = await fetch(BASE + attachScope(p) + "/add/files", {
+          method: "POST",
+          headers: authHeaders({ "X-Requested-With": "XMLHttpRequest" }),
+          body: fd,
+        });
+        const text = await res.text();
+        if (!res.ok) return errResult("upload attachment failed HTTP " + res.status + ": " + text.slice(0, 300), { status: res.status });
+        return okResult(text, { status: res.status });
+      },
+    });
+
+    api.registerTool({
+      name: "indico_add_attachment_link",
+      description:
+        "Add a URL link attachment to an Indico object (WRITE; management endpoint). " +
+        "Params: event_id; scope; session_id/contribution_id per scope; url; title. Optional description, folder, protection_mode.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          event_id: { type: "integer", minimum: 0 },
+          scope: { type: "string", enum: ["event", "session", "contribution"] },
+          session_id: { type: "integer", minimum: 0 },
+          contribution_id: { type: "integer", minimum: 0 },
+          url: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          folder: { type: "string" },
+          protection_mode: { type: "string", enum: ["public", "inheriting", "protected"] },
+        },
+        required: ["event_id", "url"],
+      },
+      async execute(_id, p) {
+        const form = [["title", p.title || p.url], ["link_url", p.url]];
+        if (p.description) form.push(["description", p.description]);
+        if (p.folder) form.push(["folder", p.folder]);
+        if (p.protection_mode) form.push(["protection_mode", p.protection_mode]);
+        const r = await indicoSend(attachScope(p) + "/add/link", "POST", { form });
+        return r.ok
+          ? okResult(r.text || "{}", { status: r.status })
+          : errResult("add attachment link failed HTTP " + r.status + ": " + (r.text || "").slice(0, 300), { status: r.status });
+      },
+    });
+
+    api.registerTool({
+      name: "indico_edit_attachment",
+      description:
+        "Edit metadata of an Indico attachment (WRITE). Params: event_id; scope; folder_id; attachment_id; optional title, description.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          event_id: { type: "integer", minimum: 0 },
+          scope: { type: "string", enum: ["event", "session", "contribution"] },
+          session_id: { type: "integer", minimum: 0 },
+          contribution_id: { type: "integer", minimum: 0 },
+          folder_id: { type: "integer", minimum: 0 },
+          attachment_id: { type: "integer", minimum: 0 },
+          title: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["event_id", "folder_id", "attachment_id"],
+      },
+      async execute(_id, p) {
+        const form = [];
+        if (p.title) form.push(["title", p.title]);
+        if (p.description != null) form.push(["description", p.description]);
+        const r = await indicoSend(attachScope(p) + "/" + p.folder_id + "/" + p.attachment_id + "/", "POST", { form });
+        return r.ok
+          ? okResult(r.text || "{}", { status: r.status })
+          : errResult("edit attachment failed HTTP " + r.status + ": " + (r.text || "").slice(0, 300), { status: r.status });
+      },
+    });
+
+    api.registerTool({
+      name: "indico_delete_attachment",
+      description:
+        "Delete an Indico attachment (WRITE). Params: event_id; scope; folder_id; attachment_id.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          event_id: { type: "integer", minimum: 0 },
+          scope: { type: "string", enum: ["event", "session", "contribution"] },
+          session_id: { type: "integer", minimum: 0 },
+          contribution_id: { type: "integer", minimum: 0 },
+          folder_id: { type: "integer", minimum: 0 },
+          attachment_id: { type: "integer", minimum: 0 },
+        },
+        required: ["event_id", "folder_id", "attachment_id"],
+      },
+      async execute(_id, p) {
+        const r = await indicoSend(attachScope(p) + "/" + p.folder_id + "/" + p.attachment_id + "/", "DELETE", {});
+        return r.ok
+          ? okResult(r.text || "{}", { status: r.status })
+          : errResult("delete attachment failed HTTP " + r.status + ": " + (r.text || "").slice(0, 300), { status: r.status });
+      },
+    });
+
   },
 };

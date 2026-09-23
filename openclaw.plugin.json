@@ -7,6 +7,7 @@
   ],
   "contracts": {
     "tools": [
+      "indico_add_attachment_link",
       "indico_assign_contribution",
       "indico_book_room",
       "indico_category_events",
@@ -14,10 +15,12 @@
       "indico_create_event",
       "indico_create_session",
       "indico_create_session_block",
+      "indico_delete_attachment",
       "indico_delete_contribution",
       "indico_delete_event",
       "indico_delete_session",
       "indico_download_file",
+      "indico_edit_attachment",
       "indico_edit_contribution",
       "indico_edit_session",
       "indico_edit_timetable_entry",
@@ -33,6 +36,7 @@
       "indico_set_protection",
       "indico_timetable",
       "indico_unschedule_contribution",
+      "indico_upload_attachment",
       "indico_user",
       "indico_user_details"
     ]
